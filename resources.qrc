@@ -6,5 +6,10 @@
         <file>icons/pause_button.png</file>
         <file>icons/play_button.png</file>
         <file>icons/stop_button.png</file>
+        <file>icons/Pause.png</file>
+        <file>icons/Play.png</file>
+        <file>icons/StepBack.png</file>
+        <file>icons/StepForward.png</file>
+        <file>icons/Stop.png</file>
     </qresource>
 </RCC>

@@ -1,6 +1,8 @@
 #include "timeline.h"
 
 #include "qcustomplot.h"
+#include "qcpcolorcurve.h"
+
 #include <QVector>
 #include <QBoxLayout>
 #include <QFileDialog>
@@ -120,22 +122,29 @@ void Timeline::updateTimeline(TimeSeriesData* const &data)
 {
     if (*_data_loaded) {
         // Data Related
-        int num_graphs = this->graphCount();
-        if (num_graphs > 1) {
-            int i = 0;
-            while (i < num_graphs) {
-                this->removeGraph(i);
-                i++;
-            }
-        }
+        this->clearGraphs();
+        this->clearPlottables();
+
+        const int num_layers = this->layerCount()-1;
 
         if (data != nullptr) {
             for (const auto& feature : *data->csv_data) {
-                this->addGraph(this->xAxis, this->yAxis2);
-                const int graph_idx = this->graphCount()-1;
-                this->graph(graph_idx)->setPen(QPen(Qt::black));
-                this->graph(graph_idx)->addData(data->offset_time, feature);
-                this->graph(graph_idx)->rescaleValueAxis(true);
+                QCPColorCurve *curve = new QCPColorCurve(this->xAxis, this->yAxis2);
+                curve->setData(data->offset_time, feature, data->label_color);
+                curve->setLineStyle(QCPCurve::lsLine);
+                curve->setScatterStyle(QCPScatterStyle::ssDot);
+                curve->setScatterSkip(0);
+                curve->setVisible(true);
+                curve->setLayer(this->layer(num_layers));
+                curve->rescaleValueAxis(true);
+                curve->setLayer("main");
+
+//                this->addGraph(this->xAxis, this->yAxis2);
+//                const int graph_idx = this->graphCount()-1;
+//                this->graph(graph_idx)->setPen(QPen(Qt::black));
+//                this->graph(graph_idx)->addData(data->offset_time, feature);
+//                this->graph(graph_idx)->rescaleValueAxis(true);
+
             }
             emit updateWorkspacePlot(data, s->position->get(), s->getAreaLO(), s->getAreaUO());
         }

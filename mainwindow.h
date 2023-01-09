@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QPushButton>
 #include <QMediaPlayer>
 #include <QVideoWidget>
 #include <QFileDialog>
@@ -9,6 +10,8 @@
 #include "timeline.h"
 #include "timeseriesdata.h"
 #include "workspaceplot.h"
+
+using ClassLabels = QMap<QString, int>;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,13 +27,12 @@ public:
 
 signals:
     void newVideoLoaded(const QMediaPlayer& playerInfo);
+    void applyClassLabel(const int& label_idx);
+    void exportData(const QString& filename);
 
 private slots:
     void on_actionOpenVideo_triggered();
     void on_actionOpenCSV_triggered();
-    void on_actionPlay_triggered();
-    void on_actionPause_triggered();
-//    void on_actionStop_triggered();
 
     void onActionStepBackTriggered();
     void onActionPlayPauseTriggered();
@@ -50,15 +52,28 @@ private slots:
     void onActionApplyClassLabelTriggered();
     void onActionExportDataTriggered();
 
+    void on_actionEdit_Class_Labels_triggered();
 
+    void onDoneCSVExport(const QString& filename);
 
 private:
     Ui::MainWindow *_ui;
+    // Media Control Buttons
+    QPushButton *stepBack;
+    QPushButton *playPause;
+    QPushButton *stepForward;
+    QPushButton *stop;
+
+    QDoubleSpinBox *_offsetSpinBox;
+    QComboBox *_classComboBox;
+
     QMediaPlayer *_player;
     QVideoWidget *_vw;
     Timeline *_t;
     WorkspacePlot *_plot;
     TimeSeriesData *_data;
+
+    ClassLabels *_lbl;
 
     bool _isVideoPlaying;
 

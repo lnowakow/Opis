@@ -30,7 +30,14 @@
     <addaction name="actionOpenVideo"/>
     <addaction name="actionOpenCSV"/>
    </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionEdit_Class_Labels"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -45,8 +52,6 @@
    </attribute>
    <addaction name="actionOpenVideo"/>
    <addaction name="actionOpenCSV"/>
-   <addaction name="actionPlay"/>
-   <addaction name="actionPause"/>
   </widget>
   <action name="actionOpenVideo">
    <property name="icon">
@@ -72,25 +77,9 @@
     <string>Open a CSV File</string>
    </property>
   </action>
-  <action name="actionPlay">
-   <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/icons/play_button.png</normaloff>:/icons/play_button.png</iconset>
-   </property>
+  <action name="actionEdit_Class_Labels">
    <property name="text">
-    <string>Play</string>
-   </property>
-  </action>
-  <action name="actionPause">
-   <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/icons/pause_button.png</normaloff>:/icons/pause_button.png</iconset>
-   </property>
-   <property name="text">
-    <string>Pause</string>
-   </property>
-   <property name="toolTip">
-    <string>Pause</string>
+    <string>Edit Class Labels</string>
    </property>
   </action>
  </widget>

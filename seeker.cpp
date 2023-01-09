@@ -8,7 +8,7 @@ Seeker::Seeker(QCustomPlot *parent) :
     _area_uo(5000.0f),
     _area(new QCPItemRect(parent))
 {
-    parent->addLayer("seekerLayer", 0, QCustomPlot::limAbove);
+    parent->addLayer("seekerLayer", parent->layer("main"), QCustomPlot::limAbove);
     _seeker_layer = parent->layer("seekerLayer");
 
     // area init

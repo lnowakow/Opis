@@ -25,8 +25,16 @@ public:
 
 public slots:
     void updateWorkspacePlot(TimeSeriesData* const& data, float pos, float area_lo, float area_uo);
+    void selectionChanged(const QCPDataSelection& selection);
+
+signals:
+    void workspaceSelection(const int& begin, const int& end);
 
 private:
+    QCPItemStraightLine *_handle;
+    int lo;
+    int uo;
+
     template <class T>
     int getClosestIndex(QVector<double> const &vec, T val);
     template <class T>

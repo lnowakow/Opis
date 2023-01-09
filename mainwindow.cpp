@@ -5,16 +5,27 @@
 #include <QFrame>
 #include <QSplitter>
 #include <QSpacerItem>
+#include <QFile>
+#include <QByteArray>
+#include <QJsonDocument>
+#include <QIcon>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , _ui(new Ui::MainWindow)
+    , _offsetSpinBox(new QDoubleSpinBox(this))
+    , _classComboBox(new QComboBox(this))
     , _player(new QMediaPlayer(this))
     , _vw(new QVideoWidget(this))
     , _t(new Timeline(this))
     , _plot(new WorkspacePlot(_t))
     , _data(new TimeSeriesData(_t))
+    , _lbl(new ClassLabels())
     , _isVideoPlaying(false)
+    , stepBack(new QPushButton(this))
+    , playPause(new QPushButton(this))
+    , stepForward(new QPushButton(this))
+    , stop(new QPushButton(this))
 {
     _ui->setupUi(this);
 
@@ -67,21 +78,33 @@ MainWindow::MainWindow(QWidget *parent)
     QLabel *mediaControlsLabel = new QLabel("Media Controls", this);
     mediaControlsLabel->setAlignment(Qt::AlignCenter);
 
+    // Media Buttons Init
     QFrame *mediaButtonsFrame = new QFrame(this);
-    QPushButton *stepBack = new QPushButton("Step Back", this);
-    QPushButton *playPause = new QPushButton("Play/Pause", this);
-    QPushButton *stepForward = new QPushButton("Step Forward", this);
-    QPushButton *stop = new QPushButton("Stop", this);
+    // step back
+    QIcon backIcon(":/icons/StepBack.png");
+    stepBack->setIcon(backIcon);
+    stepBack->setIconSize(QSize(32,32));
+    // play pause
+    QIcon playIcon(":/icons/Play.png");
+    playPause->setIcon(playIcon);
+    playPause->setIconSize(QSize(32,32));
+    // step forward
+    QIcon forwardIcon(":/icons/StepForward.png");
+    stepForward->setIcon(forwardIcon);
+    stepForward->setIconSize(QSize(32,32));
+    // stop
+    QIcon stopIcon(":/icons/Stop.png");
+    stop->setIcon(stopIcon);
+    stop->setIconSize(QSize(32,32));
+
 
     QLabel *offsetSpinBoxLabel = new QLabel("Data Position", this);
     offsetSpinBoxLabel->setAlignment(Qt::AlignCenter);
-    QDoubleSpinBox *offsetSpinBox = new QDoubleSpinBox(this);
-    offsetSpinBox->setRange(-1.79769E+308, 1.79769E+308);
-    offsetSpinBox->setDecimals(4);
+    _offsetSpinBox->setRange(-1.79769E+308, 1.79769E+308);
+    _offsetSpinBox->setDecimals(4);
 
     QLabel *classComboBoxLabel = new QLabel("Class Label", this);
     classComboBoxLabel->setAlignment(Qt::AlignCenter);
-    QComboBox *classComboBox = new QComboBox(this);
 
     QFrame *selectionEditFrame = new QFrame(this);
     QPushButton *shiftSelectionLeft = new QPushButton("Shift Left", this);
@@ -144,9 +167,9 @@ MainWindow::MainWindow(QWidget *parent)
     buttonsLayout->addWidget(mediaControlsLabel);
     buttonsLayout->addWidget(mediaButtonsFrame);
     buttonsLayout->addWidget(offsetSpinBoxLabel);
-    buttonsLayout->addWidget(offsetSpinBox);
+    buttonsLayout->addWidget(_offsetSpinBox);
     buttonsLayout->addWidget(classComboBoxLabel);
-    buttonsLayout->addWidget(classComboBox);
+    buttonsLayout->addWidget(_classComboBox);
     buttonsLayout->addWidget(selectionEditFrame);
     buttonsLayout->addWidget(applyClassLabel);
     buttonsLayout->addWidget(exportData);
@@ -177,8 +200,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(stepForward, &QPushButton::clicked, this, &MainWindow::onActionStepForwardTriggered);
     connect(stop, &QPushButton::clicked, this, &MainWindow::onActionStopTriggered);
 
-    connect(offsetSpinBox, &QDoubleSpinBox::valueChanged, this, &MainWindow::onActionOffsetSpinBoxValueChanged);
-    connect(classComboBox, &QComboBox::currentTextChanged, this, &MainWindow::onActionClassComboBoxCurrentTextChanged);
+    connect(_offsetSpinBox, &QDoubleSpinBox::valueChanged, this, &MainWindow::onActionOffsetSpinBoxValueChanged);
+    connect(_classComboBox, &QComboBox::currentTextChanged, this, &MainWindow::onActionClassComboBoxCurrentTextChanged);
 
     connect(shiftSelectionLeft, &QPushButton::clicked, this, &MainWindow::onActionShiftSelectionLeftTriggered);
     connect(shiftSelectionRight, &QPushButton::clicked, this, &MainWindow::onActionShiftSelectionRightTriggered);
@@ -207,8 +230,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionOpenVideo_triggered()
 {
-    QString filename = QFileDialog::getOpenFileName(this, "Open a Video File", "", "Video File (*.avi, *.mpg, *.mp4)");
-   // QString filename = "/Users/lukasz/Downloads/Be11-test1 (1).mp4";
+    // QString filename = QFileDialog::getOpenFileName(this, "Open a Video File", "", "Video File (*.avi, *.mpg, *.mp4)");
+    QString filename = "/Users/lukasz/Downloads/Be11-test1 (1).mp4";
     onActionStopTriggered();
 
     _player->setSource(QUrl::fromLocalFile(filename));
@@ -218,8 +241,8 @@ void MainWindow::on_actionOpenVideo_triggered()
 
 void MainWindow::on_actionOpenCSV_triggered()
 {
-    QString filename = QFileDialog::getOpenFileName(this, "Open a CSV File", "", "CSV File (*.csv)");
-    //QString filename = "/Users/Lukasz/Documents/Mosaic/sensor_reading/data/test_data.csv";
+    //QString filename = QFileDialog::getOpenFileName(this, "Open a CSV File", "", "CSV File (*.csv)");
+    QString filename = "/Users/Lukasz/Documents/Mosaic/sensor_reading/data/test_data.csv";
 
     qDebug() << "Opening CSV File";
     TimeSeriesData *tmp = new TimeSeriesData(_t, filename);
@@ -229,25 +252,17 @@ void MainWindow::on_actionOpenCSV_triggered()
     connect(_t->s, &Seeker::replotNow, _data, &TimeSeriesData::updateData);
     connect(_data, &TimeSeriesData::replotNow, _t, &Timeline::updateTimeline);
     connect(_t, &Timeline::updateWorkspacePlot, _plot, &WorkspacePlot::updateWorkspacePlot);
+    connect(_data->offset, &SeekerPosition::positionChanged, this, [&](float pos){
+        _offsetSpinBox->setValue(pos);
+    });
+    connect(_plot, &WorkspacePlot::workspaceSelection, _data, &TimeSeriesData::workspaceSelection);
+    connect(this, &MainWindow::applyClassLabel, _data, &TimeSeriesData::applyClassLabel);
+    connect(this, &MainWindow::exportData, _data, &TimeSeriesData::exportData);
+    connect(_data, &TimeSeriesData::onDoneCSVExport, this, &MainWindow::onDoneCSVExport);
 
     qDebug() << "Length of data: " << _data->time.size();
     emit _data->replotNow(_data);
 }
-
-
-void MainWindow::on_actionPlay_triggered()
-{
-    _player->play();
-    _ui->statusbar->showMessage("Playing");
-}
-
-
-void MainWindow::on_actionPause_triggered()
-{
-    _player->pause();
-    _ui->statusbar->showMessage("Paused..");
-}
-
 
 void MainWindow::onActionStopTriggered()
 {
@@ -270,10 +285,14 @@ void MainWindow::onActionPlayPauseTriggered()
         _player->pause();
         _isVideoPlaying = false;
         _ui->statusbar->showMessage("Paused..");
+        QIcon playIcon(":/icons/Play.png");
+        playPause->setIcon(playIcon);
     } else {
         _player->play();
         _isVideoPlaying = true;
         _ui->statusbar->showMessage("Playing");
+        QIcon playIcon(":/icons/Pause.png");
+        playPause->setIcon(playIcon);
     }
 
 }
@@ -291,6 +310,7 @@ void MainWindow::onActionOffsetSpinBoxValueChanged(double d)
     qDebug() << "Offset Value Changed to :" << d;
     if (_data != nullptr) {
         _data->offset->set(double(d));
+        emit _data->replotNow(_data);
     }
 }
 void MainWindow::onActionClassComboBoxCurrentTextChanged(const QString &text)
@@ -330,16 +350,53 @@ void MainWindow::onActionShrinkSelectionRightTriggered()
 
 void MainWindow::onActionApplyClassLabelTriggered()
 {
-    qDebug() << "applyClassLabel triggered";
+    qDebug() << "applyClassLabel triggered. Index: " << _classComboBox->currentIndex();
+    if (_classComboBox->count() != 0) {
+        emit applyClassLabel(_classComboBox->currentIndex());
+    }
 }
 
 void MainWindow::onActionExportDataTriggered()
 {
     qDebug() << "exportData triggered";
+    if (_data != nullptr)  {
+        _ui->statusbar->showMessage("Exporting data to CSV");
+        QString filename = QFileDialog::getSaveFileName(this, "Save File", "", "CSV File (*.csv)");
+        emit exportData(filename);
+    }
 }
 
 void MainWindow::on_actionEdit_Class_Labels_triggered()
 {
     qDebug() << "Editing Available Class Labels";
+    QString filename = QFileDialog::getOpenFileName(this, "Open a JSON File", "", "JSON File (*.json)");
+    QFile inFile(filename);
+    inFile.open(QIODevice::ReadOnly|QIODevice::Text);
+    QByteArray data = inFile.readAll();
+    inFile.close();
+    QJsonParseError errorPtr;
+    const QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &errorPtr);
+    if (jsonDoc.isNull()) {
+        qDebug() << "Error opening JSON file: " << errorPtr.errorString();
+        return;
+    }
+
+    QJsonObject rootObj = jsonDoc.object();
+    QJsonArray lblArray = rootObj.value("labels").toArray();
+    for (const auto e : lblArray) {
+        qDebug() << "looping thorugh this";
+        for (const auto &key : e.toObject().keys()) {
+            qDebug() << key;
+            _data->lbls->insert(e.toObject().value(key).toInt(), key);
+            _classComboBox->insertItem(e.toObject().value(key).toInt(), key);
+        }
+    }
+
+}
+
+void MainWindow::onDoneCSVExport(const QString& filename)
+{
+    QString msg("Done Exporting CSV to : " + filename);
+    _ui->statusbar->showMessage(msg);
 }
 

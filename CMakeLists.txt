@@ -25,6 +25,7 @@ set(PROJECT_SOURCES
         seekerposition.h seekerposition.cpp
         timeseriesdata.h timeseriesdata.cpp
         workspaceplot.h workspaceplot.cpp
+        qcpcolorcurve.h qcpcolorcurve.cpp
         resources.qrc
 )
 

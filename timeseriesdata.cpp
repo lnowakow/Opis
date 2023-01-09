@@ -1,20 +1,30 @@
 #include "timeseriesdata.h"
+#include <algorithm>
 
 TimeSeriesData::TimeSeriesData(QCustomPlot *parent) :
     csv_data(new CSVData()),
+    lbls(new LabelMap()),
     offset(new SeekerPosition(0.0f)),
     _area(new QCPItemRect(parent)),
-    _area_selected(false)
+    _area_selected(false),
+    _label_selection_begin(0),
+    _label_selection_end(0),
+    _label_area_selected(false)
 {
 
 }
 
 TimeSeriesData::TimeSeriesData(QCustomPlot *parent, const QString &filename) :
     csv_data(new CSVData()),
+    lbls(new LabelMap()),
     offset(new SeekerPosition(0.0f)),
     _area(new QCPItemRect(parent)),
-    _area_selected(false)
+    _area_selected(false),
+    _label_selection_begin(0),
+    _label_selection_end(0),
+    _label_area_selected(false)
 {
+
     std::ifstream csv_file(filename.toStdString());
         if (!csv_file.is_open()) throw std::runtime_error("Could not open file!");
 
@@ -56,7 +66,16 @@ TimeSeriesData::TimeSeriesData(QCustomPlot *parent, const QString &filename) :
             csv_data->insert(features[i], *tmp[i]);
         }
 
-        csv_data->insert(QString("label"), QVector<double>(tmp[0]->size(), 0));
+        if (!csv_data->contains("label")) {
+            label_value = QVector<double>(tmp[0]->size(), 0);
+        } else {
+            label_value = QVector<double>((*csv_data)["label"].begin(), (*csv_data)["label"].end());
+            csv_data->remove("label");
+        }
+        label_color.reserve(label_value.size());
+        for (int i = 0; i < label_value.size(); ++i) {
+            label_color.push_back(lbl_colors[int(label_value[i])]);
+        }
 
         time = QVector<double>((*csv_data)["time"].begin(), (*csv_data)["time"].end());
         csv_data->remove("time");
@@ -110,8 +129,6 @@ void TimeSeriesData::updateData()
     _begin = *offset_time.begin();
     _end = *(offset_time.end()-1);
 
-    qDebug() << "Begin: " << _begin;
-
     _area->topLeft->setCoords(_begin, 0.1);
     _area->bottomRight->setCoords(_end, 0 );
     emit replotNow(this);
@@ -147,5 +164,57 @@ void TimeSeriesData::onMouseRelease(QMouseEvent *event)
 {
     qDebug() << "TimeSeriesData: Mouse Released";
     _area_selected = false;
+}
+
+void TimeSeriesData::workspaceSelection(const int &begin, const int &end)
+{
+    qDebug() << "selected data range: " << begin << ", " << end;
+    if (begin == -1 && end == -1) {
+        _label_selection_begin = 0;
+        _label_selection_end = 0;
+        _label_area_selected = false;
+    } else {
+        _label_selection_begin = begin;
+        _label_selection_end = end;
+        _label_area_selected = true;
+    }
+}
+
+void TimeSeriesData::applyClassLabel(const int &label_idx)
+{
+    qDebug() << "applying class label";
+    if (_label_area_selected) {
+        std::fill(label_value.begin()+_label_selection_begin, label_value.begin()+_label_selection_end, label_idx);
+        std::fill(label_color.begin()+_label_selection_begin, label_color.begin()+_label_selection_end, lbl_colors[label_idx]);
+
+        emit replotNow(this);
+    }
+}
+
+void TimeSeriesData::exportData(const QString& filename)
+{
+    qDebug() << "CSV File will save under: " << filename;
+    std::ofstream out;
+    out.open(filename.toStdString());
+    //QDebug out(QtDebugMsg);
+    // Column Names First
+    out << "\"time\",";
+    CSVData::Iterator iter;
+    for (iter = csv_data->begin(); iter != csv_data->end(); ++iter) {
+        out << iter.key().toStdString() << ",";
+    }
+    out << "\"label\"\n";
+
+    // Data
+    for (int i = 0; i < time.size(); ++i) {
+        out << time.value(i) << ",";
+        for (const auto& feature : *csv_data) {
+            out << feature[i] << ",";
+        }
+        out << label_value[i] << "\n";
+    }
+
+    out.close();
+    emit onDoneCSVExport(filename);
 }
 

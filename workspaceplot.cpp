@@ -1,8 +1,15 @@
 #include <algorithm>
 #include "workspaceplot.h"
+#include "qcpcolorcurve.h"
 
-WorkspacePlot::WorkspacePlot(Timeline *parent)
+WorkspacePlot::WorkspacePlot(Timeline *parent) :
+    _handle(new QCPItemStraightLine(this)),
+    lo(0),
+    uo(0)
 {
+    this->addLayer("seekerLayer", this->layer("main"), QCustomPlot::limAbove);
+    QCPLayer *seeker_layer = this->layer("seekerLayer");
+
     this->setMinimumHeight(FIXED_HEIGHT);
     this->setMaximumHeight(FIXED_HEIGHT);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -24,72 +31,100 @@ WorkspacePlot::WorkspacePlot(Timeline *parent)
     //this->graph(0)->addData(x, y0);
     this->xAxis->setRange(0,1);
     this->yAxis->setRange(0,1);
-    this->setInteractions(QCP::iSelectItems);
+    this->setInteractions(QCP::iSelectPlottables | QCP::iMultiSelect);
+    this->setSelectionRectMode(QCP::srmSelect);
+
+    // handle init
+    _handle->point1->setCoords(0.5,0);
+    _handle->point2->setCoords(0.5,1);
+    QPen v_seeker_pen;
+    v_seeker_pen.setColor(Qt::red);
+    v_seeker_pen.setWidth(1);
+    _handle->setPen(v_seeker_pen);
+    _handle->setLayer(seeker_layer);
+
     this->replot();
 }
 
 void WorkspacePlot::updateWorkspacePlot(TimeSeriesData* const &data, float pos, float area_lo, float area_uo)
 {
-    int num_graphs = this->graphCount();
-    if (num_graphs > 1) {
-        int i = 0;
-        while (i < num_graphs) {
-            this->removeGraph(i);
-            i++;
-        }
-    }
+    this->clearGraphs();
+    this->clearPlottables();
 
-
-    int lo;
-    int uo;
-
-    qDebug() << "pos-area_lo: " << pos-area_lo << ", pos+area_uo: " << pos+area_uo;
+//    qDebug() << "pos-area_lo: " << pos-area_lo << ", pos+area_uo: " << pos+area_uo;
 
     if (pos+area_lo < 0) {
-        qDebug() << "CASE 5";
+//        qDebug() << "CASE 5";
         lo = 0;
         uo = 0;
     }
     else if (pos-area_lo < 0) {
-        qDebug() << "CASE 2";
+//        qDebug() << "CASE 2";
         lo = 0;
         uo = getClosestIndex(data->offset_time, pos+area_uo);
     }
     else if (pos+area_uo > data->offset_time[data->offset_time.size()-1]) {
-        qDebug() << "CASE 3";
+//        qDebug() << "CASE 3";
         lo = getClosestIndex(data->offset_time, pos-area_lo);
         uo = data->offset_time.size()-1;
     } else if (pos-area_lo > data->offset_time[data->offset_time.size()-1]) {
-        qDebug() << "CASE 4";
+//        qDebug() << "CASE 4";
         lo = data->offset_time.size()-1;
         uo = data->offset_time.size()-1;
     } else {
-        qDebug() << "CASE 1";
+//        qDebug() << "CASE 1";
         lo = getClosestIndex(data->offset_time, pos-area_lo);
         uo = getClosestIndex(data->offset_time, pos+area_uo);
     }
 
-    qDebug() << "LO: " << lo << ", UO: " << uo;
-    qDebug() << "LO[" << lo << "] val: " << data->offset_time[lo] << ", UO[" << uo << "] val: " << data->offset_time[uo];
+//    qDebug() << "LO: " << lo << ", UO: " << uo;
+//    qDebug() << "LO[" << lo << "] val: " << data->offset_time[lo] << ", UO[" << uo << "] val: " << data->offset_time[uo];
 
     if (lo == -1 || uo == -1) {
         qDebug() << "Value not found in vector";
         return;
     }
 
+    const int num_layers = this->layerCount()-1;
+
     if (data != nullptr) {
         for (const auto& feature : *data->csv_data) {
-            this->addGraph(this->xAxis, this->yAxis);
-            const int graph_idx = this->graphCount()-1;
-            this->graph(graph_idx)->setPen(QPen(Qt::black));
-            this->graph(graph_idx)->addData(slice(data->offset_time,lo,uo), slice(feature, lo, uo));
-//            this->graph(graph_idx)->rescaleKeyAxis(true);
-//            this->graph(graph_idx)->rescaleValueAxis(true);
+            // Set coloring
+            QCPColorCurve *curve = new QCPColorCurve(this->xAxis, this->yAxis);
+            curve->setData(slice(data->offset_time,lo,uo), slice(feature, lo, uo), slice(data->label_color, lo, uo));
+            curve->setLineStyle(QCPCurve::lsLine);
+            curve->setScatterStyle(QCPScatterStyle::ssDot);
+            curve->setScatterSkip(0);
+            curve->setSelectable(QCP::stDataRange);
+            curve->setVisible(true);
+
+            QCPSelectionDecorator *selDec = new QCPSelectionDecorator();
+            selDec->setBrush(QBrush(QColor(50,50,50,80)));
+            curve->setSelectionDecorator(selDec);
+            curve->setLayer(this->layer(num_layers));
+
             this->xAxis->rescale(true);
             this->yAxis->rescale(true);
+
+            connect(curve, SIGNAL(selectionChanged(QCPDataSelection)), this, SLOT(selectionChanged(QCPDataSelection)));
         }
     }
+
+    _handle->point1->setCoords(this->xAxis->range().center(),0);
+    _handle->point2->setCoords(this->xAxis->range().center(),1);
+
     this->replot();
+
+}
+
+void WorkspacePlot::selectionChanged(const QCPDataSelection &selection)
+{
+    qDebug() << "Begin idx: " << selection.span().begin() << ", End idx: " << selection.span().end();
+    if (!selection.isEmpty()) {
+        emit workspaceSelection(selection.span().begin()+lo, selection.span().end()+lo);
+    } else {
+        emit workspaceSelection(-1,-1);
+    }
 }
 
 template <class T>
