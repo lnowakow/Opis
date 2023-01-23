@@ -27,6 +27,7 @@ public:
 public slots:
     void newVideoLoaded(const QMediaPlayer& playerInfo);
     void updateTimeline(TimeSeriesData* const& data);
+    void isVideoPlaying(const bool& isPlaying);
 
 signals:
     void requestData();
@@ -41,6 +42,7 @@ private:
     qint64 *_data_offset;
 
     bool *_video_loaded;
+    bool *_video_playing;
     bool *_data_loaded;
 
     void SetupBackground();

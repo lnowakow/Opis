@@ -15,7 +15,11 @@ void QCPColorCurve::drawCurveLine(QCPPainter *painter, const QVector<QPointF> &l
     applyDefaultAntialiasingHint(painter);
     int nLines = lines.size();
     for (int i = 0; i < nLines; ++i) {
-        painter->setPen(colors_[i]);
+        int offset_i = this->selection().span().begin()+i;
+        if (offset_i < colors_.size()) {
+            painter->setPen(colors_[offset_i]);
+
+        }
         if (i < nLines-1) {
             drawPolyline(painter, QVector<QPointF>(lines.begin()+i, lines.begin()+i+2));
         }

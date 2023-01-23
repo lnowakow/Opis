@@ -88,6 +88,8 @@ void WorkspacePlot::updateWorkspacePlot(TimeSeriesData* const &data, float pos, 
     const int num_layers = this->layerCount()-1;
 
     if (data != nullptr) {
+        qDebug() << "Number of features: " << data->csv_data->keys().size();
+        int counter = 0;
         for (const auto& feature : *data->csv_data) {
             // Set coloring
             QCPColorCurve *curve = new QCPColorCurve(this->xAxis, this->yAxis);
@@ -97,21 +99,23 @@ void WorkspacePlot::updateWorkspacePlot(TimeSeriesData* const &data, float pos, 
             curve->setScatterSkip(0);
             curve->setSelectable(QCP::stDataRange);
             curve->setVisible(true);
+            curve->setLayer(this->layer(num_layers));
+            curve->setLayer("main");
+            curve->setName("wsPlot"+QString::number(counter));
 
             QCPSelectionDecorator *selDec = new QCPSelectionDecorator();
             selDec->setBrush(QBrush(QColor(50,50,50,80)));
             curve->setSelectionDecorator(selDec);
-            curve->setLayer(this->layer(num_layers));
-
             this->xAxis->rescale(true);
             this->yAxis->rescale(true);
 
             connect(curve, SIGNAL(selectionChanged(QCPDataSelection)), this, SLOT(selectionChanged(QCPDataSelection)));
+            counter++;
         }
     }
 
-    _handle->point1->setCoords(this->xAxis->range().center(),0);
-    _handle->point2->setCoords(this->xAxis->range().center(),1);
+    _handle->point1->setCoords(pos,0);
+    _handle->point2->setCoords(pos,1);
 
     this->replot();
 

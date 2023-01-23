@@ -187,7 +187,7 @@ void TimeSeriesData::applyClassLabel(const int &label_idx)
         std::fill(label_value.begin()+_label_selection_begin, label_value.begin()+_label_selection_end, label_idx);
         std::fill(label_color.begin()+_label_selection_begin, label_color.begin()+_label_selection_end, lbl_colors[label_idx]);
 
-        emit replotNow(this);
+        updateData();
     }
 }
 

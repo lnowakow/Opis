@@ -3,9 +3,9 @@
 Seeker::Seeker(QCustomPlot *parent) :
     _handle(new QCPItemStraightLine(parent)),
     position(new SeekerPosition(0.0f)),
-    _area_max_width(10000.0f),
+    _area_max_width(60000.0f),
     _area_lo(0.0f),
-    _area_uo(5000.0f),
+    _area_uo(30000.0f),
     _area(new QCPItemRect(parent))
 {
     parent->addLayer("seekerLayer", parent->layer("main"), QCustomPlot::limAbove);

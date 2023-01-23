@@ -29,34 +29,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     _ui->setupUi(this);
 
-//    // Parent Widget
-//    QWidget *centralWidget = new QWidget;
-
-//    // The needed layouts
-//    QVBoxLayout *videoLayout = new QVBoxLayout;
-//    QVBoxLayout *plotLayout = new QVBoxLayout;
-//    QVBoxLayout *timelineLayout = new QVBoxLayout;
-//    QVBoxLayout *centralLayout = new QVBoxLayout;
-
-//    // Connecting the pieces:
-//    videoLayout->addWidget(_vw);
-//    videoFrame->setLayout(videoLayout);
-//    videoFrame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-//    plotLayout->addWidget(_plot);
-//    plotFrame->setLayout(plotLayout);
-
-//    timelineLayout->addWidget(_t);
-//    timelineFrame->setLayout(timelineLayout);
-
-
-//    centralLayout->addWidget(videoFrame);
-//    centralLayout->addWidget(plotFrame);
-//    centralLayout->addWidget(timelineFrame);
-//    centralWidget->setLayout(centralLayout);
-//    setCentralWidget(centralWidget);
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
     // Main Video/Data Workspace
     QFrame *visualFrame = new QFrame(this);
     // Video Content
@@ -71,7 +43,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Timeline Content
     QFrame *timelineFrame = new QFrame(this);
-
 
     // SideBar
     QFrame *buttonsFrame = new QFrame(this);
@@ -163,7 +134,7 @@ MainWindow::MainWindow(QWidget *parent)
     selectionEditFrame->setLayout(selectionEditLayout);
 
     // Buttons
-    buttonsLayout->setAlignment(Qt::AlignTop);
+    buttonsLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
     buttonsLayout->addWidget(mediaControlsLabel);
     buttonsLayout->addWidget(mediaButtonsFrame);
     buttonsLayout->addWidget(offsetSpinBoxLabel);
@@ -172,19 +143,26 @@ MainWindow::MainWindow(QWidget *parent)
     buttonsLayout->addWidget(_classComboBox);
     buttonsLayout->addWidget(selectionEditFrame);
     buttonsLayout->addWidget(applyClassLabel);
+    buttonsLayout->addSpacerItem(new QSpacerItem(10, 1000, QSizePolicy::Expanding, QSizePolicy::Expanding));
+    QFrame *line = new QFrame(this);
+    line->setObjectName(QString::fromUtf8("line"));
+    line->setGeometry(QRect(320, 150, 118, 3));
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    buttonsLayout->addWidget(line);
     buttonsLayout->addWidget(exportData);
+    buttonsLayout->setAlignment(exportData, Qt::AlignBottom);
+
     //buttonsLayout->addSpacerItem(new QSpacerItem(10, 10, QSizePolicy::Expanding, QSizePolicy::Expanding));
 
     buttonsFrame->setLayout(buttonsLayout);
-    buttonsFrame->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    buttonsFrame->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
-//    QSplitter *centralWidget = new QSplitter(Qt::Horizontal, this);
-//    centralWidget->addWidget(visualFrame);
-//    centralWidget->addWidget(buttonsFrame);
     QWidget *centralWidget = new QWidget(this);
     QHBoxLayout *centralLayout = new QHBoxLayout;
     centralLayout->addWidget(visualFrame);
     centralLayout->addWidget(buttonsFrame);
+    centralLayout->setAlignment(buttonsFrame, Qt::AlignTop);
     centralWidget->setLayout(centralLayout);
     setCentralWidget(centralWidget);
 
@@ -193,6 +171,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::newVideoLoaded, _t, &Timeline::newVideoLoaded);
     connect(_t->s->position, &SeekerPosition::positionChanged, _player, &QMediaPlayer::setPosition);
     connect(_player, &QMediaPlayer::positionChanged, _t->s->position, &SeekerPosition::setPosition);
+    connect(this, &MainWindow::isVideoPlaying, _t, &Timeline::isVideoPlaying);
 
     // connect all UI buttons
     connect(stepBack, &QPushButton::clicked, this, &MainWindow::onActionStepBackTriggered);
@@ -230,8 +209,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionOpenVideo_triggered()
 {
-    // QString filename = QFileDialog::getOpenFileName(this, "Open a Video File", "", "Video File (*.avi, *.mpg, *.mp4)");
-    QString filename = "/Users/lukasz/Downloads/Be11-test1 (1).mp4";
+//    QString filename = QFileDialog::getOpenFileName(this, "Open a Video File", "", "Video File (*.avi, *.mpg, *.mp4, *.mov)");
+    QString filename = "/Users/lukasz/Documents/Mosaic/data_labelling/VideoRecording/first_layer_413_12fps.mov";
     onActionStopTriggered();
 
     _player->setSource(QUrl::fromLocalFile(filename));
@@ -241,8 +220,8 @@ void MainWindow::on_actionOpenVideo_triggered()
 
 void MainWindow::on_actionOpenCSV_triggered()
 {
-    //QString filename = QFileDialog::getOpenFileName(this, "Open a CSV File", "", "CSV File (*.csv)");
-    QString filename = "/Users/Lukasz/Documents/Mosaic/sensor_reading/data/test_data.csv";
+//    QString filename = QFileDialog::getOpenFileName(this, "Open a CSV File", "", "CSV File (*.csv)");
+    QString filename = "/Users/lukasz/Documents/Mosaic/data_labelling/labelled_first_layer_413.csv";
 
     qDebug() << "Opening CSV File";
     TimeSeriesData *tmp = new TimeSeriesData(_t, filename);
@@ -284,7 +263,8 @@ void MainWindow::onActionPlayPauseTriggered()
     if (_isVideoPlaying) {
         _player->pause();
         _isVideoPlaying = false;
-        _ui->statusbar->showMessage("Paused..");
+        QString msg = "Paused @ " + QString::number(_player->position());
+        _ui->statusbar->showMessage(msg);
         QIcon playIcon(":/icons/Play.png");
         playPause->setIcon(playIcon);
     } else {
@@ -294,7 +274,8 @@ void MainWindow::onActionPlayPauseTriggered()
         QIcon playIcon(":/icons/Pause.png");
         playPause->setIcon(playIcon);
     }
-
+    emit isVideoPlaying(_isVideoPlaying);
+    emit _data->replotNow(_data);
 }
 
 void MainWindow::onActionStepForwardTriggered()

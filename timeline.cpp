@@ -15,6 +15,7 @@ Timeline::Timeline(QWidget *parent) :
     _data_duration(new qint64(0)),
     _data_offset(new qint64(0)),
     _video_loaded(new bool(false)),
+    _video_playing(new bool(true)),
     _data_loaded(new bool(false)),
     _data(new TimeSeriesData(this))
 {
@@ -128,6 +129,7 @@ void Timeline::updateTimeline(TimeSeriesData* const &data)
         const int num_layers = this->layerCount()-1;
 
         if (data != nullptr) {
+            int counter = 0;
             for (const auto& feature : *data->csv_data) {
                 QCPColorCurve *curve = new QCPColorCurve(this->xAxis, this->yAxis2);
                 curve->setData(data->offset_time, feature, data->label_color);
@@ -138,17 +140,25 @@ void Timeline::updateTimeline(TimeSeriesData* const &data)
                 curve->setLayer(this->layer(num_layers));
                 curve->rescaleValueAxis(true);
                 curve->setLayer("main");
+                curve->setName("tPlot"+QString::number(counter));
 
 //                this->addGraph(this->xAxis, this->yAxis2);
 //                const int graph_idx = this->graphCount()-1;
 //                this->graph(graph_idx)->setPen(QPen(Qt::black));
 //                this->graph(graph_idx)->addData(data->offset_time, feature);
 //                this->graph(graph_idx)->rescaleValueAxis(true);
-
+                counter++;
             }
-            emit updateWorkspacePlot(data, s->position->get(), s->getAreaLO(), s->getAreaUO());
+            if (!*_video_playing) {
+                emit updateWorkspacePlot(data, s->position->get(), s->getAreaLO(), s->getAreaUO());
+            }
         }
     }
     this->replot();
 
+}
+
+void Timeline::isVideoPlaying(const bool &isPlaying)
+{
+    *_video_playing = isPlaying;
 }

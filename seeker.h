@@ -4,7 +4,7 @@
 #include "qcustomplot.h"
 #include "seekerposition.h"
 
-#define SCROLL_SENS 100
+#define SCROLL_SENS 1000
 
 class Seeker : public QObject
 {

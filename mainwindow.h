@@ -29,6 +29,7 @@ signals:
     void newVideoLoaded(const QMediaPlayer& playerInfo);
     void applyClassLabel(const int& label_idx);
     void exportData(const QString& filename);
+    void isVideoPlaying(const bool& isPlaying);
 
 private slots:
     void on_actionOpenVideo_triggered();
